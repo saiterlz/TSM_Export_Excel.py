@@ -57,13 +57,13 @@ def to_db_value(file): #从程序 中拿 到数据
                 subName = ret[5:idxName - 1]
                 if subName:
                     if ret.find("lastScan"):
+                        # "f@lliance - 比格沃斯@internalData@csvAuctionDBScan" 实例
+                        # 格式化数据 ，例如：itemString,minBuyout,marketValue,numAuctions,quantity,lastScan\ni:14484,69000,69000,4,4,1605895492\n
                         idxStart = ret.find("lastScan")
                         subStr = ret[idxStart + 10:len(ret) - 3]
                         arrItems = subStr.split('\\n')
                         if arrItems != 0:
-                            print('have data')  # 找到需求的数据段
-                            # "f@lliance - 比格沃斯@internalData@csvAuctionDBScan" 实例
-                            # 格式化数据 ，例如：itemString,minBuyout,marketValue,numAuctions,quantity,lastScan\ni:14484,69000,69000,4,4,1605895492\n
+                            print('have data')  # 已找到需求的数据段
                             for tmp in arrItems:
                                 # print('原始数据：',tmp)
                                 sql_tmp = list(tmp.split(','))
@@ -75,7 +75,7 @@ def to_db_value(file): #从程序 中拿 到数据
                                 # sql_comm = "insert into auction_history(item_id,min_price,ave_price,auction_num,quanlity,scan_time,is_del) values (%s,%s,%s,%s,%s,str_to_date(\'%s\','%%Y-%%m-%%d %%H:%%i:%%s'),%s);" % (sql_tmp[0], sql_tmp[1], sql_tmp[2], sql_tmp[3], sql_tmp[4], sql_tmp[5], sql_tmp[6])
                                 # print('SQL语句',sql_comm)
                                 sql_comm_list.append(sql_tmp)
-    content = tuple(sql_comm_list)
+    content = tuple(sql_comm_list)  #批量写sql语句支持元组
     return content
 
 def insert_to_db(file): #从程序 中拿 到数据
@@ -97,7 +97,7 @@ def insert_to_db(file): #从程序 中拿 到数据
     conn.close()
     end = time.clock()
     print("executemany方法用时：", end - start, "秒")
-    return print('我是处理写入到MYSQL')
+    return print('处理写入到MYSQL')
 
 def write_to_excel(files):
     file=files
@@ -112,6 +112,8 @@ def write_to_excel(files):
                 if subName:
                     print('服务器文件名称为:', subName)
                     if ret.find("lastScan"):
+                        # "f@lliance - 比格沃斯@internalData@csvAuctionDBScan" 实例
+                        # 格式化数据 ，例如：itemString,minBuyout,marketValue,numAuctions,quantity,lastScan\ni:14484,69000,69000,4,4,1605895492\n
                         idxStart = ret.find("lastScan")
                         subStr = ret[idxStart + 10:len(ret) - 3]
                         arrItems = subStr.split('\\n')
@@ -132,11 +134,7 @@ def write_to_excel(files):
                         ws.cell(1, 5).value = u"TSM4最后更新数据时间"
                         if arrItems != 0:
                             print('have data')  # 找到需求的数据段
-                            # "f@lliance - 比格沃斯@internalData@csvAuctionDBScan" 实例
-                            # 格式化数据 ，例如：itemString,minBuyout,marketValue,numAuctions,quantity,lastScan\ni:14484,69000,69000,4,4,1605895492\n
-                            # 开始格式化数据
                             for tmp in arrItems:
-                                # print('原始数据：',tmp)
                                 list_tmp = list(tmp.split(','))
                                 ItemName = list_tmp[0].split(":")
                                 list_tmp[0] = ItemNames[ItemName[1]]  # 处理名称
@@ -146,64 +144,7 @@ def write_to_excel(files):
                     else:
                         print('no data1')
                     wb.save("%s.xlsx" % subName)
-    return print('我是处理写入到EXCEL')
-
-
-
-"""
-
-with open(files, encoding='utf8') as f:
-    ret = f.readline()
-    while ret:
-        ret = f.readline()
-        if sprt_word in ret:
-            # idxName: = strings.Index(v, "internalData@csvAuctionDBScan")
-            # 开始处理给EXCEL文件命名，拿 "f@Alliance - 比格沃斯@internalData@csvAuctionDBScan"中的Alliance - 比格沃斯为文件名
-            idxName = ret.find("internalData@csvAuctionDBScan")
-            print('idxName=', idxName)
-            # subName: = v[5:idxName - 1]
-            subName = ret[5:idxName - 1]
-            if subName:
-                print('服务器文件名称为:', subName)
-                if ret.find("lastScan"):
-                    idxStart = ret.find("lastScan")
-                    subStr = ret[idxStart + 10:len(ret) - 3]
-                    arrItems = subStr.split('\\n')
-                    wb = load_workbook("test.xlsx")
-                    # AddSheet(fmt.Sprintf("%s", time.Now().Format("01-02 15-04-05"))
-                    ws = wb.create_sheet(time.strftime("%m-%d %H-%M-%S", time.localtime()))
-                    ws.cell(1, 1).value = u"物品名称"
-                    # ws.row_dimensions[1].height = 40 #行高
-                    ws.column_dimensions["A"].width = 40
-                    ws.cell(1, 2).value = u"最低价格"
-                    ws.column_dimensions["B"].width = 10
-                    ws.cell(1, 3).value = u"平均价格"
-                    ws.column_dimensions["B"].width = 10
-                    ws.cell(1, 4).value = u"拍卖数量"
-                    ws.cell(1, 5).value = u"TSM4最后更新数据时间"
-                    if arrItems != 0:
-                        print('have data')  # 找到需求的数据段
-                        sql_comm_list = insert_to_db(arrItems,file=files)
-                        # "f@lliance - 比格沃斯@internalData@csvAuctionDBScan" 实例
-                        # 格式化数据 ，例如：itemString,minBuyout,marketValue,numAuctions,quantity,lastScan\ni:14484,69000,69000,4,4,1605895492\n
-                        # 开始格式化数据
-                        # for tmp in arrItems:
-                        #     # print('原始数据：',tmp)
-                        #     list_tmp = list(tmp.split(','))
-                        #     ItemName = list_tmp[0].split(":")
-                        #     # print('sql数据：', sql_tmp)
-                        #     # sql_comm = "insert into auction_history(item_id,min_price,ave_price,auction_num,quanlity,scan_time,is_del) values (%s,%s,%s,%s,%s,str_to_date(\'%s\','%%Y-%%m-%%d %%H:%%i:%%s'),%s);" % (sql_tmp[0], sql_tmp[1], sql_tmp[2], sql_tmp[3], sql_tmp[4], sql_tmp[5], sql_tmp[6])
-                        #     # print('SQL语句',sql_comm)
-                        #     list_tmp[0] = ItemNames[ItemName[1]]  # 处理名称
-                        #     # list_tmp[5] = timestamp_datetime(list_tmp[5])   #处理时间
-                        #     # print(list_tmp)
-                        #     ws.append(list_tmp)  # 写入数据
-                    else:
-                        print('no data ,error split data !')  # 没有找到需要数据段
-                else:
-                    print('no data1')
-                wb.save('test.xlsx')
-"""
+    return print('处理写入到EXCEL')
 
 if __name__ == "__main__":
     sprt_word = "csvAuctionDBScan"
