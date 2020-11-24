@@ -7,6 +7,8 @@ import string
 import json
 from openpyxl import load_workbook, Workbook
 from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.styles import numbers #数据格式
+from openpyxl.styles import Alignment #对齐方式
 import time
 import pymysql
 import os
@@ -139,6 +141,8 @@ def add_sheet_name(workbook, dates):
             comm_strings = '=VLOOKUP(' + col_letter_str + '$1,INDIRECT("\'"&$' + indirect_str + '&"\'!A:H"),2,0)/10000'   #将字符串拼接成为EXCEL公式，难度 ***** 五星
             # print(comm_strings)
             ws.cell(row=ws_rows_curent, column=i).value = comm_strings      #将拼接好的公式 写入EXCEL表
+            ws.cell(row=ws_rows_curent, column=i).number_format = '0.00'    #设置数据格式
+            ws.cell(row=ws_rows_curent, column=i).alignment = Alignment(horizontal='center', vertical='center') #设置居中对齐
         else:
             break
 
@@ -205,8 +209,8 @@ if __name__ == "__main__":
     Analysis_Sheet = "分析"
     open_to_sql_button = '0'
     sprt_word = "csvAuctionDBScan"
-    files = "D:\World of Warcraft\_classic_\WTF\Account\ZHAWLDX\SavedVariables\TradeSkillMaster.lua"
-    id_name = "D:\\mystudy\\untitled1\\nameB.txt"
+    files = "E:\World of Warcraft\_classic_\WTF\Account\ZHAWLDX\SavedVariables\TradeSkillMaster.lua"
+    id_name = "D:\MyBackup\Desktop\WOW怀旧服\商业\TSM\\nameB.txt"
     ItemNames = id_to_name(id_name)
     # print(ItemNames)
     try:
