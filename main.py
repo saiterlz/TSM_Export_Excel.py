@@ -140,7 +140,7 @@ def add_sheet_name(workbook, dates):
             ws.cell(row=ws_rows_curent, column=i).value = comm_strings      #将拼接好的公式 写入EXCEL表
         else:
             break
-
+g
 
 def write_to_excel(files):
     file = files
