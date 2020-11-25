@@ -2,11 +2,16 @@
 # -*- coding: utf-8 -*-
 # 本程序功能:读取由TSM插件命令/tsm scan扫描完后的AH所有端口信息,包含物品名称,最低价格,平均价格,当前拍卖量,扫描时间.等信息
 # 通过本程序,生成一坐EXCEL表格来方便进行价格走势分析.
-
+# from win32com.client import Dispatch
+from win32com.client import Dispatch
 import string
 import json
 from openpyxl import load_workbook, Workbook
 from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.styles import numbers  # 数据格式
+from openpyxl.styles import Alignment  # 对齐方式
+from openpyxl.styles import Font  # 字体
+from openpyxl.styles import PatternFill  # 导入填充模块
 import time
 import pymysql
 import os
@@ -16,6 +21,14 @@ from openpyxl.chart import (
     Reference,
 )
 
+
+def just_open(filename):
+    print(filename)
+    xlApp = Dispatch("Excel.Application")
+    xlApp.Visible = False
+    xlBook = xlApp.Workbooks.Open(filename)
+    xlBook.Save()
+    xlBook.Close()
 
 def id_to_name(file):
     id_name = file
@@ -116,32 +129,76 @@ def insert_to_db(file):  # 从程序 中拿 到数据
     return print('处理写入到MYSQL')
 
 
-
 # 给分析页添加新培加的sheet页的名字到A例第row+1行.
 def add_sheet_name(workbook, dates):
     print(workbook, dates)
-    ws = workbook.get_sheet_by_name("分析")  #获取sheet分析这个对象
-    print(ws.title) #验证是否正确访问这个sheet(分析）
+    ws = workbook.get_sheet_by_name("分析")  # 获取sheet分析这个对象
+    print(ws.title)  # 验证是否正确访问这个sheet(分析）
     ws_rows_len = ws.max_row  # 行数
     ws_cols_len = ws.max_column  # 列数
     # print("读取本表的行数 %s 和列数 %s" % (ws_rows_len, ws_cols_len))
-    ws.cell(row=ws_rows_len + 1, column=1).value = dates   #将A列的日期写入到该单元格中，单元格中的内容 是用参数传递进来
-    ws_rows_curent = ws_rows_len + 1 #定位要写入的数据为当前得到的行数加1
-    for i in range(2, ws_cols_len+1 ):  #开始 遍历写入单元格公式内容 ，遍历范围了列数加1，因为for循环的机制才加1。写入的数据是从第 2列开始
-        print( ws.cell(row=1,column=i).value) #验证当前表中第一行的字段值 是否存在
-        if ws.cell(row=1,column=i).value != None:   #通过ws.cell().value函数得到该 值 ，用来判断第 一行对应字段是否为None
+    ws.cell(row=ws_rows_len + 1, column=1).value = dates  # 将A列的日期写入到该单元格中，单元格中的内容 是用参数传递进来
+    ws_rows_curent = ws_rows_len + 1  # 定位要写入的数据为当前得到的行数加1
+    for i in range(2, ws_cols_len + 1):  # 开始 遍历写入单元格公式内容 ，遍历范围了列数加1，因为for循环的机制才加1。写入的数据是从第 2列开始
+        print(ws.cell(row=1, column=i).value)  # 验证当前表中第一行的字段值 是否存在
+        if ws.cell(row=1, column=i).value != None:  # 通过ws.cell().value函数得到该 值 ，用来判断第 一行对应字段是否为None
             # 写入公式 =VLOOKUP(B$1,INDIRECT("'"&$A4&"'!A:H"),2,0)/10000
             #       "=VLOOKUP((B$1,INDIRECT("'" + dates + "'!A:H"),2,0)/10000 "
-            col_letter_str = get_column_letter(i)       #使用get_column_letter()函数得到列对应的字母，否则为数字，无法代入公式
-            print("col_letter_str",col_letter_str)
+            col_letter_str = get_column_letter(i)  # 使用get_column_letter()函数得到列对应的字母，否则为数字，无法代入公式
+            print("col_letter_str", col_letter_str)
             print("ws_rows_len", ws_rows_curent)
-            indirect_str = "A" + str(ws_rows_curent)    #拼接excel 函数 INDIRECT()中表名的内容 前后要用&$表名&
-            comm_strings = '=VLOOKUP(' + col_letter_str + '$1,INDIRECT("\'"&$' + indirect_str + '&"\'!A:H"),2,0)/10000'   #将字符串拼接成为EXCEL公式，难度 ***** 五星
+            indirect_str = "A" + str(ws_rows_curent)  # 拼接excel 函数 INDIRECT()中表名的内容 前后要用&$表名&
+            comm_strings = '=VLOOKUP(' + col_letter_str + '$1,INDIRECT("\'"&$' + indirect_str + '&"\'!A:H"),2,0)/10000'  # 将字符串拼接成为EXCEL公式，难度 ***** 五星
             # print(comm_strings)
-            ws.cell(row=ws_rows_curent, column=i).value = comm_strings      #将拼接好的公式 写入EXCEL表
+            ws.cell(row=ws_rows_curent, column=i).value = comm_strings  # 将拼接好的公式 写入EXCEL表
+            ws.cell(row=ws_rows_curent, column=i).number_format = '0.00'  # 设置数据格式
+            ws.cell(row=ws_rows_curent, column=i).alignment = Alignment(horizontal='center',
+                                                                        vertical='center')  # 设置居中对齐
         else:
             break
 
+
+# 开始按列找出最小值
+def get_small_value_to_color(workbook,subName):
+    ws = workbook.get_sheet_by_name("分析")
+    # 设置字体样式，设置字体为 微软雅黑，单下划线，颜色为蓝色,字体加粗
+    yahei_font_u = Font(name=u'微软雅黑', underline='single', color='0000FF', bold=True)
+    fille = PatternFill('solid', fgColor='c6efce')  # 设置填充颜色为 橙色
+    print(ws.title)
+    ws_rows_len = ws.max_row
+    print('本 sheet 表一共有 %s 行(rows)' % ws_rows_len)
+    ws_cols_len = ws.max_column
+    print('本 sheet 表一共有 %s 列(columns)' % ws_cols_len)
+    start_row = 4   #定义起始行,EXCEL表中的数据列,从第4行开始
+    for col in range(2, ws_cols_len+1):  # 定位列
+        temp_cell_value = float(10000000.0000)
+        temp_cell_pos = []
+        print('当前 是 第 %s 列.' % col)
+        # col_str = get_column_letter(cols)
+        # print(ws[col_str])
+        for row   in range(start_row, ws_rows_len+1):  # 遍历方向是列,所以选择变更 值 为行的变化.进行循环
+            # cells_value = ws.cell(row=rows, column=cols).value
+            cells_value=ws.cell(row=row, column=col).value
+            if cells_value == '#N/A':
+                # cells_value = 10000000.0000
+                print('此值 不可用')
+            else:
+                cells_value=float(cells_value)
+                print('当前 单元格的值 为:%s  , 当前单元格的类型为: %s ' % (cells_value,type(cells_value)))
+                if temp_cell_value > cells_value:
+                    temp_cell_value = cells_value
+                    temp_cell_pos =[row,col]
+                    print('进行数据比较,结果是当前 单元格的值 比较小.符合要求,数据为:%s ,数据的坐标为行%s ,列 %s ' % (temp_cell_value,temp_cell_pos[0],temp_cell_pos[1]))
+                    # ws.cell(row=row, column=row).font=yahei_font_u
+                else:
+                    print('进行数据比较,结果是当前 单元格的值 比较大.  不符合要求,数据为:', cells_value)
+                    # temp_cell_value = temp_cell_value
+                    pass
+                print(temp_cell_pos[0],temp_cell_pos[1])
+                ws.cell(temp_cell_pos[0],temp_cell_pos[1]).font=yahei_font_u
+                ws.cell(temp_cell_pos[0],temp_cell_pos[1]).fill=fille
+    print('比较大小着色完毕!进行保存')
+    workbook.save("%s.xlsx" % subName)
 
 def write_to_excel(files):
     file = files
@@ -164,7 +221,7 @@ def write_to_excel(files):
                         if os.path.exists("%s.xlsx" % subName):
                             wb = load_workbook("%s.xlsx" % subName)
                         else:
-                            wb = Workbook()
+                            wb = Workbook(data_only=True)
                         # AddSheet(fmt.Sprintf("%s", time.Now().Format("01-02 15-04-05"))
                         new_sheet_name = time.strftime("%m-%d %H-%M-%S", time.localtime())
                         ws = wb.create_sheet(new_sheet_name)
@@ -196,12 +253,17 @@ def write_to_excel(files):
 
                     add_sheet_name(wb, new_sheet_name)
                     wb.save("%s.xlsx" % subName)
+                    # get_small_value_to_color(load_workbook("%s.xlsx" % subName, data_only=True))
+                    just_open(path_excel)
+                    get_small_value_to_color(load_workbook("%s.xlsx" % subName, data_only=True),subName)
+                    # wb.save("%s.xlsx" % subName)
 
     return print('处理写入到EXCEL')
 
 
 if __name__ == "__main__":
     open_write_to_excel_button = '1'
+    path_excel="C:\\Users\sai\AppData\Local\Temp\TSM_Export_Excel.py\Alliance - 比格沃斯.xlsx"
     Analysis_Sheet = "分析"
     open_to_sql_button = '0'
     sprt_word = "csvAuctionDBScan"
