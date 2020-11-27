@@ -30,6 +30,7 @@ def just_open(filename):
     xlBook.Save()
     xlBook.Close()
 
+
 def id_to_name(file):
     id_name = file
     ItemNames = {}
@@ -140,65 +141,79 @@ def add_sheet_name(workbook, dates):
     ws.cell(row=ws_rows_len + 1, column=1).value = dates  # 将A列的日期写入到该单元格中，单元格中的内容 是用参数传递进来
     ws_rows_curent = ws_rows_len + 1  # 定位要写入的数据为当前得到的行数加1
     for i in range(2, ws_cols_len + 1):  # 开始 遍历写入单元格公式内容 ，遍历范围了列数加1，因为for循环的机制才加1。写入的数据是从第 2列开始
-        print(ws.cell(row=1, column=i).value)  # 验证当前表中第一行的字段值 是否存在
+        this_col_name = ws.cell(row=1, column=i).value  # 验证当前表中第一行的字段值 是否存在
         if ws.cell(row=1, column=i).value != None:  # 通过ws.cell().value函数得到该 值 ，用来判断第 一行对应字段是否为None
             # 写入公式 =VLOOKUP(B$1,INDIRECT("'"&$A4&"'!A:H"),2,0)/10000
             #       "=VLOOKUP((B$1,INDIRECT("'" + dates + "'!A:H"),2,0)/10000 "
             col_letter_str = get_column_letter(i)  # 使用get_column_letter()函数得到列对应的字母，否则为数字，无法代入公式
-            print("col_letter_str", col_letter_str)
-            print("ws_rows_len", ws_rows_curent)
+            print("本列的物品为:%s 在 %s 列,从 %s 行,开始写入数据..." % (this_col_name, col_letter_str, ws_rows_curent))
             indirect_str = "A" + str(ws_rows_curent)  # 拼接excel 函数 INDIRECT()中表名的内容 前后要用&$表名&
             comm_strings = '=VLOOKUP(' + col_letter_str + '$1,INDIRECT("\'"&$' + indirect_str + '&"\'!A:H"),2,0)/10000'  # 将字符串拼接成为EXCEL公式，难度 ***** 五星
             # print(comm_strings)
             ws.cell(row=ws_rows_curent, column=i).value = comm_strings  # 将拼接好的公式 写入EXCEL表
-            ws.cell(row=ws_rows_curent, column=i).number_format = '0.00'  # 设置数据格式
-            ws.cell(row=ws_rows_curent, column=i).alignment = Alignment(horizontal='center',
+            ws.cell(row=ws_rows_curent, column=i).number_format = '0.0000'  # 设置数据格式
+            ws.cell(row=ws_rows_curent, column=i).alignment = Alignment(horizontal='right',
                                                                         vertical='center')  # 设置居中对齐
         else:
             break
 
 
 # 开始按列找出最小值
-def get_small_value_to_color(workbook,subName):
-    ws = workbook.get_sheet_by_name("分析")
+def get_small_value_to_color(path_excel):
+    wb = load_workbook(path_excel,data_only=True)
+    ws = wb.get_sheet_by_name("分析")
     # 设置字体样式，设置字体为 微软雅黑，单下划线，颜色为蓝色,字体加粗
     yahei_font_u = Font(name=u'微软雅黑', underline='single', color='0000FF', bold=True)
     fille = PatternFill('solid', fgColor='c6efce')  # 设置填充颜色为 橙色
+    def_fille = PatternFill('solid', fgColor='FFFFFF')  # 设置填充颜色为 白色
     print(ws.title)
     ws_rows_len = ws.max_row
     print('本 sheet 表一共有 %s 行(rows)' % ws_rows_len)
     ws_cols_len = ws.max_column
     print('本 sheet 表一共有 %s 列(columns)' % ws_cols_len)
-    start_row = 4   #定义起始行,EXCEL表中的数据列,从第4行开始
-    for col in range(2, ws_cols_len+1):  # 定位列
+    start_row = 4  # 定义起始行,EXCEL表中的数据列,从第4行开始
+    for col in range(2, ws_cols_len + 1):  # 定位列
         temp_cell_value = float(10000000.0000)
         temp_cell_pos = []
         print('当前 是 第 %s 列.' % col)
         # col_str = get_column_letter(cols)
         # print(ws[col_str])
-        for row   in range(start_row, ws_rows_len+1):  # 遍历方向是列,所以选择变更 值 为行的变化.进行循环
+        for row in range(start_row, ws_rows_len + 1):  # 遍历方向是列,所以选择变更 值 为行的变化.进行循环
             # cells_value = ws.cell(row=rows, column=cols).value
-            cells_value=ws.cell(row=row, column=col).value
-            if cells_value == '#N/A':
-                # cells_value = 10000000.0000
-                print('此值 不可用')
+            cells_value = ws.cell(row=row, column=col).value
+            ws.cell(row, col).fill = def_fille  # 重置当前单元格的颜色,将以前着色的单元格恢复无底色
+            ws.cell(row, col).number_format = '0.0000'  # 设置数据格式
+            ws.cell(row, col).alignment = Alignment(horizontal='right')  # 设置居中对齐
+            if cells_value == '#N/A' or cells_value == None:  # 判断单元格中的值 等于'#N/A ,无法使用,进行下一个循环
+
+                print('当前 单元格的值 为:%s ,此值不可用! 当前单元格的坐标, 列为: %s -- 行为: %s' % (cells_value, col, row))
+                continue
+            elif cells_value == '#REF!':
+                print('当前 单元格的值 为:%s ,此值不可用! 当前单元格的坐标, 列为: %s -- 行为: %s' % (cells_value, col, row))
+                continue
             else:
-                cells_value=float(cells_value)
-                print('当前 单元格的值 为:%s  , 当前单元格的类型为: %s ' % (cells_value,type(cells_value)))
+                cells_value = float(cells_value)
+                print('当前 单元格的值 为:%s  , 当前单元格的坐标, 列为: %s -- 行为: %s' % (cells_value, col, row))
                 if temp_cell_value > cells_value:
                     temp_cell_value = cells_value
-                    temp_cell_pos =[row,col]
-                    print('进行数据比较,结果是当前 单元格的值 比较小.符合要求,数据为:%s ,数据的坐标为行%s ,列 %s ' % (temp_cell_value,temp_cell_pos[0],temp_cell_pos[1]))
-                    # ws.cell(row=row, column=row).font=yahei_font_u
+                    temp_cell_pos = [row, col]
+                    print('进行数据比较,结果是当前单元格的值 比较小.符合要求,数据为:%s ,数据的坐标为行%s ,列 %s ' % (
+                        temp_cell_value, temp_cell_pos[0], temp_cell_pos[1]))
+                    # ws.cell(temp_cell_pos[0], temp_cell_pos[1]).fill = fille
+                    # ws.cell(row - 1, col).fill = def_fille
+                elif temp_cell_value == cells_value:
+                    temp_cell_pos = [row, col]
+                    print('进行数据比较,结果是当前单元格的值 相等.例外,数据为:%s ,数据的坐标为行%s ,列 %s ' % (
+                        temp_cell_value, temp_cell_pos[0], temp_cell_pos[1]))
+
                 else:
                     print('进行数据比较,结果是当前 单元格的值 比较大.  不符合要求,数据为:', cells_value)
-                    # temp_cell_value = temp_cell_value
                     pass
-                print(temp_cell_pos[0],temp_cell_pos[1])
-                ws.cell(temp_cell_pos[0],temp_cell_pos[1]).font=yahei_font_u
-                ws.cell(temp_cell_pos[0],temp_cell_pos[1]).fill=fille
+        # ws.cell(temp_cell_pos[0],temp_cell_pos[1]).font=yahei_font_u
+        ws.cell(temp_cell_pos[0], temp_cell_pos[1]).fill = fille
     print('比较大小着色完毕!进行保存')
-    workbook.save("%s.xlsx" % subName)
+    wb.save(path_excel)
+
 
 def write_to_excel(files):
     file = files
@@ -250,22 +265,20 @@ def write_to_excel(files):
                             print('no data ,error split data !')  # 没有找到需要数据段
                     else:
                         print('no data1')
-
                     add_sheet_name(wb, new_sheet_name)
                     wb.save("%s.xlsx" % subName)
-                    # get_small_value_to_color(load_workbook("%s.xlsx" % subName, data_only=True))
-                    just_open(path_excel)
-                    get_small_value_to_color(load_workbook("%s.xlsx" % subName, data_only=True),subName)
-                    # wb.save("%s.xlsx" % subName)
-
     return print('处理写入到EXCEL')
 
 
 if __name__ == "__main__":
-    open_write_to_excel_button = '1'
-    path_excel="C:\\Users\sai\AppData\Local\Temp\TSM_Export_Excel.py\Alliance - 比格沃斯.xlsx"
+    # open_write_to_excel_button = '0'
+    open_write_to_excel_button = input('是否将-->拍卖行数据<--数据写入EXCEL,(1=开  0=关) :')
+    # compare_button = '1'
+    compare_button = input('是否开启-->拍卖行最低价<--标注颜色,(1=开  0=关) :')
+    path_excel = "C:\\Users\sai\AppData\Local\Temp\TSM_Export_Excel.py\Alliance - 比格沃斯.xlsx"
     Analysis_Sheet = "分析"
-    open_to_sql_button = '0'
+    # open_to_sql_button = '0'
+    open_to_sql_button = input('是否将-->拍卖行数据<--写入Mysql,(1=开  0=关) :')
     sprt_word = "csvAuctionDBScan"
     files = "D:\World of Warcraft\_classic_\WTF\Account\ZHAWLDX\SavedVariables\TradeSkillMaster.lua"
     id_name = "D:\\mystudy\\untitled1\\nameB.txt"
@@ -286,3 +299,12 @@ if __name__ == "__main__":
             print('不用写入EXCEL表')
     except Exception as err:
         print(err)
+    try:
+        if compare_button != "0":
+            just_open(path_excel)
+            get_small_value_to_color(path_excel)
+        else:
+            print('不用写入EXCEL表')
+    except Exception as err:
+        print(err)
+    print(time.strftime('%Y-%m-%d %H:%M:%S',  time.localtime()))
