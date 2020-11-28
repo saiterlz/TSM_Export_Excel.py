@@ -15,6 +15,7 @@ from openpyxl.styles import PatternFill  # 导入填充模块
 import time
 import pymysql
 import os
+import configparser
 from openpyxl.chart import (
     Series,
     LineChart,
@@ -23,18 +24,20 @@ from openpyxl.chart import (
 
 
 def just_open(filename):
-    print(filename)
+    abs_filename= os.path.abspath(filename)
+    print(abs_filename)
     xlApp = Dispatch("Excel.Application")
     xlApp.Visible = False
-    xlBook = xlApp.Workbooks.Open(filename)
+    xlBook = xlApp.Workbooks.Open(abs_filename)
     xlBook.Save()
     xlBook.Close()
 
 
-def id_to_name(file):
-    id_name = file
+def id_to_name(filename):
+    # id_name = os.path.abspath(filename)
+    # print(id_name)
     ItemNames = {}
-    with open(id_name, encoding='utf8') as id_f:
+    with open(id_name,'r',encoding='utf8') as id_f:
         id_ret = id_f.readlines()
         # print(id_ret)
         for i in id_ret:
@@ -157,7 +160,6 @@ def add_sheet_name(workbook, dates):
         else:
             break
 
-
 # 开始按列找出最小值
 def get_small_value_to_color(path_excel):
     wb = load_workbook(path_excel,data_only=True)
@@ -188,7 +190,7 @@ def get_small_value_to_color(path_excel):
 
                 print('当前 单元格的值 为:%s ,此值不可用! 当前单元格的坐标, 列为: %s -- 行为: %s' % (cells_value, col, row))
                 continue
-            elif cells_value == '#REF!':
+            elif cells_value == '#REF!' or cells_value == 0:
                 print('当前 单元格的值 为:%s ,此值不可用! 当前单元格的坐标, 列为: %s -- 行为: %s' % (cells_value, col, row))
                 continue
             else:
@@ -205,7 +207,6 @@ def get_small_value_to_color(path_excel):
                     temp_cell_pos = [row, col]
                     print('进行数据比较,结果是当前单元格的值 相等.例外,数据为:%s ,数据的坐标为行%s ,列 %s ' % (
                         temp_cell_value, temp_cell_pos[0], temp_cell_pos[1]))
-
                 else:
                     print('进行数据比较,结果是当前 单元格的值 比较大.  不符合要求,数据为:', cells_value)
                     pass
@@ -271,17 +272,31 @@ def write_to_excel(files):
 
 
 if __name__ == "__main__":
-    # open_write_to_excel_button = '0'
+    # 当前文件路径
+    proDir = os.path.split(os.path.realpath(__file__))[0]
+    # 在当前文件路径下查找.ini文件
+    configPath = os.path.join(proDir, "config.ini")
+    print(configPath)
+    conf = configparser.ConfigParser()
+    # 读取.ini文件
+    conf.read(configPath, encoding="utf-8-sig")
+    #控制单元
     open_write_to_excel_button = input('是否将-->拍卖行数据<--数据写入EXCEL,(1=开  0=关) :')
-    # compare_button = '1'
     compare_button = input('是否开启-->拍卖行最低价<--标注颜色,(1=开  0=关) :')
-    path_excel = "C:\\Users\sai\AppData\Local\Temp\TSM_Export_Excel.py\Alliance - 比格沃斯.xlsx"
-    Analysis_Sheet = "分析"
-    # open_to_sql_button = '0'
     open_to_sql_button = input('是否将-->拍卖行数据<--写入Mysql,(1=开  0=关) :')
-    sprt_word = "csvAuctionDBScan"
-    files = "D:\World of Warcraft\_classic_\WTF\Account\ZHAWLDX\SavedVariables\TradeSkillMaster.lua"
-    id_name = "D:\\mystudy\\untitled1\\nameB.txt"
+    #原始设置部分
+    # path_excel = "C:\\Users\sai\AppData\Local\Temp\TSM_Export_Excel.py\Alliance - 比格沃斯.xlsx"
+    # Analysis_Sheet = "分析"
+    # sprt_word = "csvAuctionDBScan"
+    # files = "D:\World of Warcraft\_classic_\WTF\Account\ZHAWLDX\SavedVariables\TradeSkillMaster.lua"
+    # id_name = "D:\\mystudy\\untitled1\\nameB.txt"
+    #优化为读取INI文件，获取路径，路径是不能带有引号
+    path_excel = conf.get('path', 'path_excel')
+    files = conf.get('path', 'files')
+    id_name = conf.get('path', 'id_name')
+
+    Analysis_Sheet = conf.get('value', 'Analysis_Sheet')
+    sprt_word = conf.get('value', 'sprt_word')
     ItemNames = id_to_name(id_name)
     # print(ItemNames)
     try:
